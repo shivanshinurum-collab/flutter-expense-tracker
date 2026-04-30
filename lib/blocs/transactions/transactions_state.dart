@@ -13,9 +13,9 @@ class TransactionsState extends Equatable {
   final String error;
 
   TransactionsState({
-    @required this.transactionsList,
-    @required this.status,
-    @required this.error,
+    required this.transactionsList,
+    required this.status,
+    required this.error,
   });
 
   factory TransactionsState.initial() {
@@ -34,9 +34,9 @@ class TransactionsState extends Equatable {
       ];
 
   TransactionsState copyWith({
-    List<Transaction> transactionsList,
-    TStatus status,
-    String error,
+    List<Transaction>? transactionsList,
+    TStatus? status,
+    String? error,
   }) {
     return TransactionsState(
       transactionsList: transactionsList ?? this.transactionsList,
@@ -45,3 +45,5 @@ class TransactionsState extends Equatable {
     );
   }
 }
+
+

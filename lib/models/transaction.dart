@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/cupertino.dart';
 
 class Transaction extends Equatable {
   final String id;
@@ -8,14 +7,16 @@ class Transaction extends Equatable {
   final DateTime date;
   final DateTime createdOn;
   final String imagePath;
+  final String category;
 
   Transaction({
-    @required this.id,
-    @required this.title,
-    @required this.amount,
-    @required this.date,
-    @required this.createdOn,
-    @required this.imagePath,
+    required this.id,
+    required this.title,
+    required this.amount,
+    required this.date,
+    required this.createdOn,
+    required this.imagePath,
+    this.category = 'Others',
   });
 
   @override
@@ -27,16 +28,18 @@ class Transaction extends Equatable {
       date,
       createdOn,
       imagePath,
+      category,
     ];
   }
 
   Transaction copyWith({
-    String id,
-    String title,
-    double amount,
-    DateTime date,
-    DateTime createdOn,
-    String imagePath,
+    String? id,
+    String? title,
+    double? amount,
+    DateTime? date,
+    DateTime? createdOn,
+    String? imagePath,
+    String? category,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -45,6 +48,7 @@ class Transaction extends Equatable {
       date: date ?? this.date,
       createdOn: createdOn ?? this.createdOn,
       imagePath: imagePath ?? this.imagePath,
+      category: category ?? this.category,
     );
   }
 
@@ -56,6 +60,7 @@ class Transaction extends Equatable {
       'date': date.millisecondsSinceEpoch,
       'createdOn': createdOn.millisecondsSinceEpoch,
       'imagePath': imagePath,
+      'category': category,
     };
   }
 
@@ -66,10 +71,13 @@ class Transaction extends Equatable {
       amount: double.tryParse(map['amount']) ?? 0.0,
       date: DateTime.fromMillisecondsSinceEpoch(map['date']),
       createdOn: DateTime.fromMillisecondsSinceEpoch(map['createdOn']),
-      imagePath: map['imagePath'],
+      imagePath: map['imagePath'] ?? '',
+      category: map['category'] ?? 'Others',
     );
   }
 
   @override
   bool get stringify => true;
 }
+
+

@@ -1,14 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:expense_app/models/models.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart' as sqf;
 
 class TransactionsRepository {
   static const _tableName = 'transactions';
-  String _dbPath;
-  sqf.Database _db;
+  late String _dbPath;
+  late sqf.Database _db;
+  
+  // Web Fallback
+  List<Transaction> _webMockList = [];
 
   Future<List<Transaction>> loadTransactions() async {
+    if (kIsWeb) {
+      return _webMockList;
+    }
+    
     _dbPath = join(await sqf.getDatabasesPath(), 'transactions_data.db');
     try {
       final dbAlreadyExists = await sqf.databaseExists(_dbPath);
@@ -21,7 +28,7 @@ class TransactionsRepository {
           version: 1,
           onCreate: (db, version) {
             return db.execute(
-                'CREATE TABLE $_tableName(id TEXT PRIMARY KEY, title TEXT, amount TEXT, date INTEGER, createdOn INTEGER, imagePath TEXT)');
+                'CREATE TABLE $_tableName(id TEXT PRIMARY KEY, title TEXT, amount TEXT, date INTEGER, createdOn INTEGER, imagePath TEXT, category TEXT)');
           },
         );
         return [];
@@ -32,10 +39,15 @@ class TransactionsRepository {
   }
 
   Future<List<Transaction>> getAllTransactions() async {
+    if (kIsWeb) {
+      return _webMockList;
+    }
     try {
-      final List<Map> tList = await _db.query(_tableName, orderBy: 'date');
-      final List<Transaction> transactions =
-          tList.map((tMap) => Transaction.fromMap(tMap)).toList();
+      final List<Map<String, dynamic>> tList =
+          await _db.query(_tableName, orderBy: 'date');
+      final List<Transaction> transactions = tList
+          .map((tMap) => Transaction.fromMap(Map<String, dynamic>.from(tMap)))
+          .toList();
       return transactions;
     } catch (e) {
       throw Exception('Unable to get transactions.');
@@ -43,7 +55,11 @@ class TransactionsRepository {
   }
 
   Future<List<Transaction>> addTransaction(
-      {@required List<Transaction> list, @required Transaction addT}) async {
+      {required List<Transaction> list, required Transaction addT}) async {
+    if (kIsWeb) {
+      _webMockList.add(addT);
+      return List.from(_webMockList);
+    }
     try {
       await _db.insert(_tableName, addT.toMap(),
           conflictAlgorithm: sqf.ConflictAlgorithm.replace);
@@ -54,7 +70,11 @@ class TransactionsRepository {
   }
 
   Future<List<Transaction>> removeTransaction(
-      {@required List<Transaction> list, @required String remTID}) async {
+      {required List<Transaction> list, required String remTID}) async {
+    if (kIsWeb) {
+      _webMockList.removeWhere((element) => element.id == remTID);
+      return List.from(_webMockList);
+    }
     try {
       await _db.delete(_tableName, where: 'id = ?', whereArgs: [remTID]);
       return await getAllTransactions();
@@ -63,8 +83,13 @@ class TransactionsRepository {
     }
   }
 
-  Future<List<Transaction>> filterTransactions(
-      {@required String keyword}) async {
+  Future<List<Transaction>> filterTransactions({required String keyword}) async {
+    if (kIsWeb) {
+      return _webMockList
+          .where((element) =>
+              element.title.toLowerCase().contains(keyword.toLowerCase()))
+          .toList();
+    }
     try {
       final filtered = await _db
           .query(_tableName, where: 'title LIKE ?', whereArgs: ['%$keyword%']);
@@ -75,7 +100,15 @@ class TransactionsRepository {
     }
   }
 
-  Future<bool> updateTransaction({@required Transaction transaction}) async {
+  Future<bool> updateTransaction({required Transaction transaction}) async {
+    if (kIsWeb) {
+      final index =
+          _webMockList.indexWhere((element) => element.id == transaction.id);
+      if (index != -1) {
+        _webMockList[index] = transaction;
+      }
+      return true;
+    }
     try {
       await _db.update(_tableName, transaction.toMap(),
           where: 'id = ?', whereArgs: [transaction.id]);
@@ -85,3 +118,5 @@ class TransactionsRepository {
     }
   }
 }
+
+

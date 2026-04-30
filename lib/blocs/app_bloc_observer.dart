@@ -3,7 +3,7 @@ import 'package:bloc/bloc.dart';
 //* For debugging purpose
 class AppBlocObserver extends BlocObserver {
   @override
-  void onEvent(Bloc bloc, Object event) {
+  void onEvent(Bloc bloc, Object? event) {
     super.onEvent(bloc, event);
     print('\nEvent: $event\n');
   }
@@ -26,3 +26,5 @@ class AppBlocObserver extends BlocObserver {
     print('\nTransition: $transition\n');
   }
 }
+
+

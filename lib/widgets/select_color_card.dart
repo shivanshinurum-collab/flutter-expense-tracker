@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 class SelectColorCard extends StatelessWidget {
-  final Function onTap;
+  final GestureTapCallback onTap;
   final Color color;
   final String title;
 
   const SelectColorCard({
-    Key key,
-    @required this.onTap,
-    @required this.color,
-    @required this.title,
+    Key? key,
+    required this.onTap,
+    required this.color,
+    required this.title,
   }) : super(key: key);
 
   @override
@@ -39,3 +39,5 @@ class SelectColorCard extends StatelessWidget {
     );
   }
 }
+
+

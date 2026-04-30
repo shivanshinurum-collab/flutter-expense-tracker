@@ -27,13 +27,16 @@ void main() async {
 class MyApp extends StatelessWidget {
   final SharedPreferences sharedPreferences;
   const MyApp({
-    @required this.sharedPreferences,
+    required this.sharedPreferences,
   });
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider(
-      create: (context) => TransactionsRepository(),
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider(create: (context) => TransactionsRepository()),
+        RepositoryProvider(create: (context) => UserPreferencesRepository(preferences: sharedPreferences)),
+      ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider<TransactionsBloc>(
@@ -42,15 +45,17 @@ class MyApp extends StatelessWidget {
             )..add(GetTransactions()),
           ),
           BlocProvider(
-            create: (context) => GoogleAdsCubit(),
-          ),
-          BlocProvider(
             create: (context) => ThemeCubit(
               preferences: sharedPreferences,
             ),
           ),
+          BlocProvider(
+            create: (context) => BudgetCubit(
+              repository: context.read<UserPreferencesRepository>(),
+            ),
+          ),
         ],
-        child: ExpenseTrackerApp(),
+        child: const ExpenseTrackerApp(),
       ),
     );
   }
@@ -58,7 +63,7 @@ class MyApp extends StatelessWidget {
 
 class ExpenseTrackerApp extends StatelessWidget {
   const ExpenseTrackerApp({
-    Key key,
+    Key? key,
   }) : super(key: key);
 
   @override
@@ -75,3 +80,5 @@ class ExpenseTrackerApp extends StatelessWidget {
     );
   }
 }
+
+

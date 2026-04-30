@@ -4,8 +4,8 @@ class RoundedImage extends StatelessWidget {
   final String asset;
 
   const RoundedImage({
-    Key key,
-    @required this.asset,
+    Key? key,
+    required this.asset,
   }) : super(key: key);
 
   @override
@@ -25,3 +25,5 @@ class RoundedImage extends StatelessWidget {
     );
   }
 }
+
+

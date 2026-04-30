@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:likk_picker/likk_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -21,14 +21,14 @@ class NewTransaction extends StatefulWidget {
   final Transaction transaction;
 
   NewTransaction.add({
-    Key key,
+    Key? key,
   })  : this.state = NewTransactionState.add,
-        this.transaction = null,
+        this.transaction = Transaction(id: "", title: "", amount: 0.0, date: DateTime.now(), createdOn: DateTime.now(), imagePath: ""),
         super(key: key);
 
   NewTransaction.edit({
-    Key key,
-    @required this.transaction,
+    Key? key,
+    required this.transaction,
   })  : this.state = NewTransactionState.edit,
         super(key: key);
 
@@ -41,66 +41,56 @@ class _NewTransactionState extends State<NewTransaction> {
   final _amountController = TextEditingController();
   final _dateController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  DateTime _pickedDate;
-  File _imageFile;
-  Directory _appLibraryDirectory;
-  GalleryController _controller;
+  DateTime? _pickedDate = DateTime.now();
+  File? _imageFile;
+  String _selectedCategory = 'Food';
+  final ImagePicker _picker = ImagePicker();
+  late Directory _appLibraryDirectory;
+
+  final List<Map<String, dynamic>> _categories = [
+    {'name': 'Food', 'icon': Icons.restaurant, 'color': Colors.orange},
+    {'name': 'Transport', 'icon': Icons.directions_car, 'color': Colors.blue},
+    {'name': 'Shopping', 'icon': Icons.shopping_bag, 'color': Colors.pink},
+    {'name': 'Entertainment', 'icon': Icons.movie, 'color': Colors.purple},
+    {'name': 'Health', 'icon': Icons.medical_services, 'color': Colors.red},
+    {'name': 'Others', 'icon': Icons.category, 'color': Colors.blueGrey},
+  ];
 
   @override
   void initState() {
     super.initState();
     _updateDirectory();
-    _controller = GalleryController(
-      gallerySetting: GallerySetting(
-        enableCamera: true,
-        maximum: 1,
-        requestType: RequestType.image,
-        onItemClick: (entity, list) async {
-          if (list.isNotEmpty) {
-            final file = await list[0].entity.file;
-            _updateImage(file);
-            Navigator.pop(context);
-          }
-        },
-      ),
-    );
 
     if (widget.state == NewTransactionState.edit) {
       _titleController.text = widget.transaction.title;
       _amountController.text = widget.transaction.amount.toString();
       _pickedDate = widget.transaction.date;
-      _dateController.text = DateFormat.yMMMd().format(_pickedDate);
-      widget.transaction.imagePath.isNotEmpty
-          ? _imageFile = File(widget.transaction.imagePath)
-          : _imageFile = null;
+      _selectedCategory = widget.transaction.category;
+      _dateController.text = DateFormat.yMMMd().format(_pickedDate ?? DateTime.now());
+      if (widget.transaction.imagePath.isNotEmpty) {
+        _imageFile = File(widget.transaction.imagePath);
+      }
     }
   }
 
   Future<void> _updateDirectory() async {
     _appLibraryDirectory = await getApplicationDocumentsDirectory();
-    _appLibraryDirectory = await _appLibraryDirectory.create();
   }
 
   void _updateImage(File image) {
-    final fileExtension = image.path.split('.').last;
-    if (fileExtension == 'jpg' ||
-        fileExtension == 'jpeg' ||
-        fileExtension == 'png') {
-      setState(() {
-        _imageFile = image;
-      });
-    }
+    setState(() {
+      _imageFile = image;
+    });
   }
 
   void _onSubmit() async {
-    if (!_formKey.currentState.validate()) {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
-    File writtenFile;
-    if (_imageFile != null) {
+    File? writtenFile;
+    if (_imageFile != null && _imageFile!.existsSync()) {
       final imageFilePath = '${_appLibraryDirectory.path}/${Uuid().v4()}.png';
-      final emptyFile = await File(imageFilePath).create();
-      writtenFile = await emptyFile.writeAsBytes(_imageFile.readAsBytesSync());
+      writtenFile = await _imageFile!.copy(imageFilePath);
     }
     final tBloc = context.read<TransactionsBloc>();
     final transaction = Transaction(
@@ -109,184 +99,236 @@ class _NewTransactionState extends State<NewTransaction> {
           : widget.transaction.id,
       title: _titleController.text,
       amount: double.parse(_amountController.text),
-      date: _pickedDate,
-      imagePath: _imageFile == null ? '' : writtenFile.path,
+      date: _pickedDate ?? DateTime.now(),
+      imagePath: writtenFile?.path ?? (widget.state == NewTransactionState.edit ? widget.transaction.imagePath : ''),
       createdOn: DateTime.now(),
+      category: _selectedCategory,
     );
     if (widget.state == NewTransactionState.add) {
-      tBloc.add(
-        AddTransaction(transaction: transaction),
-      );
+      tBloc.add(AddTransaction(transaction: transaction));
     } else {
-      tBloc.add(
-        UpdateTransaction(transaction: transaction),
-      );
+      tBloc.add(UpdateTransaction(transaction: transaction));
     }
-    Navigator.of(context).pop(transaction);
+    Navigator.of(context).pop();
   }
 
   void _startDatePicker() {
     showDatePicker(
-            context: context,
-            initialDate: DateTime.now(),
-            firstDate: DateTime.parse("2020-01-01 00:00:01Z"),
-            lastDate: DateTime.now())
-        .then((value) {
-      if (value == null) {
-        return;
+      context: context,
+      initialDate: _pickedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+          child: child!,
+        );
+      },
+    ).then((value) {
+      if (value != null) {
+        setState(() {
+          _pickedDate = value;
+          _dateController.text = DateFormat.yMMMd().format(value);
+        });
       }
-      _pickedDate = value;
-      _dateController.text = DateFormat.yMMMd().format(_pickedDate);
     });
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Card(
-        margin: EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 20,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-            18,
-          ),
-        ),
-        elevation: 8,
-        child: Container(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Title'),
-                  controller: _titleController,
-                  validator: (value) {
-                    if (value.isEmpty) {
-                      return 'Title cannot be empty';
-                    }
-                    return null;
-                  },
-                ),
-                TextFormField(
-                  decoration: InputDecoration(
-                    labelText: 'Price',
-                    prefixText: getCurrencySymbol(),
+    final theme = Theme.of(context);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      padding: EdgeInsets.only(
+        top: 24,
+        left: 24,
+        right: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  keyboardType: TextInputType.number,
-                  controller: _amountController,
-                  onFieldSubmitted: (_) => _startDatePicker(),
-                  validator: (value) {
-                    if (value.isEmpty) {
-                      return 'Amount cannot be empty';
-                    }
-                    final price = double.tryParse(value);
-                    if (price == null) {
-                      return 'Please enter numbers only';
-                    }
-                    if (price <= 0) {
-                      return 'Price must be greater than 0';
-                    }
-                    if (price >= 1000000) {
-                      return 'Price must be less than 100,00,00';
-                    }
-                    return null;
-                  },
                 ),
-                Container(
-                  margin: EdgeInsets.only(
-                    top: 10,
-                    bottom: 30,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          readOnly: true,
-                          controller: _dateController,
-                          decoration: InputDecoration(labelText: 'Date'),
-                          enableInteractiveSelection: false,
-                          validator: (value) {
-                            if (value.isEmpty) {
-                              return 'Please pick a date';
-                            }
-                            return null;
-                          },
+              ),
+              const SizedBox(height: 24),
+              Text(
+                widget.state == NewTransactionState.add ? 'New Expense' : 'Edit Expense',
+                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              
+              // Category Selection
+              Text('Category', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 50,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _categories.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final cat = _categories[index];
+                    final isSelected = _selectedCategory == cat['name'];
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedCategory = cat['name']),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: isSelected ? cat['color'] : cat['color'].withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(cat['icon'], size: 18, color: isSelected ? Colors.white : cat['color']),
+                            if (isSelected) ...[
+                              const SizedBox(width: 8),
+                              Text(cat['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ],
+                          ],
                         ),
                       ),
-                      FlatButton(
-                        onPressed: _startDatePicker,
-                        child: Text(
-                          'Choose Date',
-                          style: TextStyle(
-                            color: Theme.of(context).primaryColor,
-                            fontSize: 16,
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
+                    );
+                  },
                 ),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () async {
-                        final entity = await _controller.pick(context);
-                        if (entity.isNotEmpty) {
-                          final file = await entity[0].entity.file;
-                          _updateImage(file);
-                        }
+              ),
+              const SizedBox(height: 24),
+              
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'What did you spend on?',
+                  hintText: 'e.g. Dinner with friends',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  prefixIcon: const Icon(Icons.title),
+                ),
+                validator: (val) => val == null || val.isEmpty ? 'Please enter a title' : null,
+              ),
+              const SizedBox(height: 16),
+              
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Amount',
+                        prefixText: '₹ ',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) return 'Enter amount';
+                        if (double.tryParse(val) == null) return 'Enter a number';
+                        return null;
                       },
-                      icon: Icon(Icons.image),
                     ),
-                    if (_imageFile != null)
-                      Container(
-                        height: 50,
-                        width: 50,
-                        child: Image.file(_imageFile),
-                      ),
-                    Spacer(),
-                    FlatButton(
-                      onPressed: _onSubmit,
-                      child: Text(
-                        widget.state == NewTransactionState.add
-                            ? 'Add Transaction'
-                            : 'Update',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 1,
+                    child: InkWell(
+                      onTap: _startDatePicker,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: theme.colorScheme.outline),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                      ),
-                      color: Theme.of(context).primaryColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
+                        child: const Icon(Icons.calendar_today),
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              
+              // Attachment
+              Row(
+                children: [
+                  Text('Receipt', style: theme.textTheme.titleSmall),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () async {
+                      final image = await _picker.pickImage(source: ImageSource.gallery);
+                      if (image != null) _updateImage(File(image.path));
+                    },
+                    icon: const Icon(Icons.image_outlined),
+                  ),
+                  IconButton(
+                    onPressed: () async {
+                      final image = await _picker.pickImage(source: ImageSource.camera);
+                      if (image != null) _updateImage(File(image.path));
+                    },
+                    icon: const Icon(Icons.camera_alt_outlined),
+                  ),
+                ],
+              ),
+              if (_imageFile != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  height: 100,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    image: DecorationImage(
+                      image: FileImage(_imageFile!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      onPressed: () => setState(() => _imageFile = null),
+                      icon: const CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 12,
+                        child: Icon(Icons.close, size: 16, color: Colors.red),
+                      ),
+                    ),
+                  ),
                 ),
-                SizedBox(
-                  height: 10,
-                )
-              ],
-            ),
+              const SizedBox(height: 32),
+              
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _onSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    widget.state == NewTransactionState.add ? 'Save Expense' : 'Update Expense',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

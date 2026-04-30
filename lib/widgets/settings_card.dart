@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 class SettingsCard extends StatelessWidget {
-  final Function onTap;
+  final GestureTapCallback onTap;
   final IconData icon;
   final String title;
 
   const SettingsCard({
-    Key key,
-    @required this.onTap,
-    @required this.icon,
-    @required this.title,
+    Key? key,
+    required this.onTap,
+    required this.icon,
+    required this.title,
   }) : super(key: key);
 
   @override
@@ -47,3 +47,5 @@ class SettingsCard extends StatelessWidget {
     );
   }
 }
+
+

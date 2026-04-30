@@ -1,9 +1,8 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 final formatter = NumberFormat.compactSimpleCurrency(
-    locale: Platform.localeName, decimalDigits: 2);
+    locale: kIsWeb ? 'en_IN' : null, decimalDigits: 2);
 
 extension CurrencyParsing on double {
   String parseCurrency() {
@@ -14,3 +13,5 @@ extension CurrencyParsing on double {
 String getCurrencySymbol() {
   return formatter.currencySymbol;
 }
+
+

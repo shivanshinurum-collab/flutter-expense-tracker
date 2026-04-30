@@ -2,7 +2,6 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:expense_app/models/models.dart';
 import 'package:expense_app/repositories/repositories.dart';
-import 'package:meta/meta.dart';
 
 part 'transactions_event.dart';
 part 'transactions_state.dart';
@@ -10,7 +9,7 @@ part 'transactions_state.dart';
 class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
   final TransactionsRepository _transactionsRepository;
 
-  TransactionsBloc({@required TransactionsRepository transactionsRepository})
+  TransactionsBloc({required TransactionsRepository transactionsRepository})
       : this._transactionsRepository = transactionsRepository,
         super(TransactionsState.initial()) {
     on<TransactionsEvent>(
@@ -25,7 +24,7 @@ class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
           final transactions = await _transactionsRepository.loadTransactions();
           add(UpdateTransactions(transactions: transactions));
         } catch (e) {
-          emit(state.copyWith(status: TStatus.error, error: e));
+          emit(state.copyWith(status: TStatus.error, error: e.toString()));
         }
       }
 
@@ -36,7 +35,7 @@ class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
               list: state.transactionsList, addT: event.transaction);
           add(UpdateTransactions(transactions: transactions));
         } catch (e) {
-          emit(state.copyWith(status: TStatus.error, error: e));
+          emit(state.copyWith(status: TStatus.error, error: e.toString()));
         }
       }
 
@@ -47,7 +46,7 @@ class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
               list: state.transactionsList, remTID: event.transactionID);
           add(UpdateTransactions(transactions: transactions));
         } catch (e) {
-          emit(state.copyWith(status: TStatus.error, error: e));
+          emit(state.copyWith(status: TStatus.error, error: e.toString()));
         }
       }
 
@@ -60,9 +59,11 @@ class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
               await _transactionsRepository.getAllTransactions();
           add(UpdateTransactions(transactions: transactions));
         } catch (e) {
-          emit(state.copyWith(status: TStatus.error, error: e));
+          emit(state.copyWith(status: TStatus.error, error: e.toString()));
         }
       }
     });
   }
 }
+
+

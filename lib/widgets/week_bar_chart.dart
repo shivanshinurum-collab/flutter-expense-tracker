@@ -5,9 +5,9 @@ import 'dart:math';
 import 'package:expense_app/models/models.dart';
 
 class WeekBarChart extends StatefulWidget {
-  final List<Transaction> _transactions;
+  final List<Transaction>? _transactions;
 
-  WeekBarChart({List<Transaction> transactions}) : _transactions = transactions;
+  WeekBarChart({List<Transaction>? transactions = const []}) : _transactions = transactions;
 
   @override
   State<StatefulWidget> createState() => WeekBarChartState();
@@ -15,8 +15,8 @@ class WeekBarChart extends StatefulWidget {
 
 class WeekBarChartState extends State<WeekBarChart> {
   final Color _barBackgroundColor = Colors.white;
-  int _touchedIndex;
-  double _total;
+  int _touchedIndex = -1;
+  double _total = 0.0;
   List<double> _spendings = List.generate(7, (index) => 0);
 
   double _calculateTotal() {
@@ -25,11 +25,11 @@ class WeekBarChartState extends State<WeekBarChart> {
       _spendings = List.generate(7, (index) => 0);
     }
 
-    if (widget._transactions.isEmpty) {
+    if (widget._transactions == null || widget._transactions!.isEmpty) {
       return 0;
     }
     double sum = 0;
-    for (Transaction transaction in widget._transactions) {
+    for (Transaction transaction in widget._transactions!) {
       _spendings[transaction.date.weekday - 1] += transaction.amount;
       sum += transaction.amount;
     }
@@ -44,7 +44,7 @@ class WeekBarChartState extends State<WeekBarChart> {
       margin: EdgeInsets.all(10),
       elevation: 7,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      color: Theme.of(context).accentColor,
+      color: Theme.of(context).colorScheme.secondary,
       child: Stack(
         children: <Widget>[
           Padding(
@@ -105,16 +105,16 @@ class WeekBarChartState extends State<WeekBarChart> {
       x: x,
       barRods: [
         BarChartRodData(
-          y: isTouched ? y + 1 : y,
-          colors: [
-            isTouched
-                ? Theme.of(context).primaryColorDark
-                : Theme.of(context).primaryColor
-          ],
+          toY: isTouched ? y + 1 : y,
+          color: isTouched
+              ? Theme.of(context).primaryColorDark
+              : Theme.of(context).primaryColor,
           width: width,
           backDrawRodData: BackgroundBarChartRodData(
-              show: true, y: _total, // Length of all Bars
-              colors: [_barBackgroundColor]),
+            show: true,
+            toY: _total, // Length of all Bars
+            color: _barBackgroundColor,
+          ),
         ),
       ],
     );
@@ -145,7 +145,7 @@ class WeekBarChartState extends State<WeekBarChart> {
             return _makeGroupData(6, _spendings[6],
                 isTouched: i == _touchedIndex);
           default:
-            return null;
+            return _makeGroupData(6, 0);
         }
       });
 
@@ -155,7 +155,7 @@ class WeekBarChartState extends State<WeekBarChart> {
         touchTooltipData: BarTouchTooltipData(
             tooltipBgColor: Colors.blueGrey,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              String weekDay;
+              String weekDay = "";
               switch (group.x.toInt()) {
                 case 0:
                   weekDay = 'Monday';
@@ -180,7 +180,7 @@ class WeekBarChartState extends State<WeekBarChart> {
                   break;
               }
               return BarTooltipItem(
-                  weekDay + '\n' + '₹ ' + (rod.y - 1).toString(),
+                  weekDay + '\n' + '₹ ' + (rod.toY - 1).toString(),
                   TextStyle(color: Colors.white, fontFamily: 'Poppins'));
             }),
         touchCallback: (touchEvent, barTouchResponse) {
@@ -188,7 +188,7 @@ class WeekBarChartState extends State<WeekBarChart> {
             if (barTouchResponse != null &&
                 barTouchResponse.spot != null &&
                 touchEvent.isInterestedForInteractions) {
-              _touchedIndex = barTouchResponse.spot.touchedBarGroupIndex;
+              _touchedIndex = barTouchResponse.spot?.touchedBarGroupIndex ?? -1;
             } else {
               _touchedIndex = -1;
             }
@@ -196,45 +196,71 @@ class WeekBarChartState extends State<WeekBarChart> {
         },
       ),
       titlesData: FlTitlesData(
-          show: true,
-          topTitles: SideTitles(showTitles: false),
-          bottomTitles: SideTitles(
+        show: true,
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        leftTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        rightTitles: AxisTitles(
+          sideTitles: SideTitles(
             showTitles: true,
-            getTextStyles: (context, value) => TextStyle(
-              color: Theme.of(context).primaryColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
+            getTitlesWidget: (value, meta) => Text(
+              '',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            margin: 16,
-            getTitles: (double value) {
+          ),
+        ),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 38,
+            getTitlesWidget: (value, meta) {
+              String text = '';
               switch (value.toInt()) {
                 case 0:
-                  return 'M';
+                  text = 'M';
+                  break;
                 case 1:
-                  return 'T';
+                  text = 'T';
+                  break;
                 case 2:
-                  return 'W';
+                  text = 'W';
+                  break;
                 case 3:
-                  return 'T';
+                  text = 'T';
+                  break;
                 case 4:
-                  return 'F';
+                  text = 'F';
+                  break;
                 case 5:
-                  return 'S';
+                  text = 'S';
+                  break;
                 case 6:
-                  return 'S';
-                default:
-                  return '';
+                  text = 'S';
+                  break;
               }
+              return SideTitleWidget(
+                axisSide: meta.axisSide,
+                space: 16,
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              );
             },
           ),
-          leftTitles: SideTitles(
-            showTitles: false,
-          ),
-          rightTitles: SideTitles(
-            getTextStyles: (context, value) => TextStyle(
-                color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-            showTitles: true,
-          )),
+        ),
+      ),
       borderData: FlBorderData(
         show: false,
       ),

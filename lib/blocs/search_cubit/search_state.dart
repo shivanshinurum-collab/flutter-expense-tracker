@@ -9,9 +9,9 @@ enum SearchStatus {
 
 class SearchState extends Equatable {
   SearchState(
-      {@required this.transactions,
-      @required this.status,
-      @required this.error});
+      {required this.transactions,
+      required this.status,
+      required this.error});
 
   final List<Transaction> transactions;
   final SearchStatus status;
@@ -26,9 +26,9 @@ class SearchState extends Equatable {
   List<Object> get props => [transactions, status, error];
 
   SearchState copyWith({
-    List<Transaction> transactions,
-    SearchStatus status,
-    String error,
+    List<Transaction>? transactions,
+    SearchStatus? status,
+    String? error,
   }) {
     return SearchState(
       transactions: transactions ?? this.transactions,
@@ -37,3 +37,5 @@ class SearchState extends Equatable {
     );
   }
 }
+
+

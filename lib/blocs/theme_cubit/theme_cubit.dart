@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'theme_state.dart';
@@ -9,7 +9,7 @@ part 'theme_state.dart';
 class ThemeCubit extends Cubit<ThemeState> {
   final SharedPreferences _preferences;
 
-  ThemeCubit({@required SharedPreferences preferences})
+  ThemeCubit({required SharedPreferences preferences})
       : _preferences = preferences,
         super(ThemeState.initial()) {
     loadThemeIfPresent();
@@ -55,6 +55,25 @@ class ThemeCubit extends Cubit<ThemeState> {
     saveTheme(ThemeColor.green);
   }
 
+  void toIndigo() {
+    emit(
+      state.copyWith(
+        color: ThemeColor.indigo,
+        theme: indigoTheme,
+      ),
+    );
+    saveTheme(ThemeColor.indigo);
+  }
+
+  void toDark() {
+    emit(
+      state.copyWith(
+        theme: darkTheme,
+      ),
+    );
+    // Dark mode handled separately in shared prefs if needed
+  }
+
   void loadThemeIfPresent() {
     final savedTheme = _preferences.getString('theme');
     if (savedTheme != null) {
@@ -72,6 +91,10 @@ class ThemeCubit extends Cubit<ThemeState> {
           break;
         case ThemeColor.red:
           toRed();
+          break;
+        case ThemeColor.indigo:
+          toIndigo();
+          break;
       }
     }
   }
@@ -83,3 +106,5 @@ class ThemeCubit extends Cubit<ThemeState> {
     );
   }
 }
+
+

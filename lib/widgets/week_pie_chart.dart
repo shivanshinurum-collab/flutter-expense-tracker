@@ -3,8 +3,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 class WeekPieChart extends StatefulWidget {
-  final List<Transaction> _transactions;
-  const WeekPieChart({Key key, List<Transaction> transactions})
+  final List<Transaction>? _transactions;
+  const WeekPieChart({Key? key, List<Transaction>? transactions})
       : _transactions = transactions,
         super(key: key);
 
@@ -20,7 +20,8 @@ class _WeekPieChartState extends State<WeekPieChart> {
       _spendings.clear();
       _spendings = List.generate(7, (index) => 0);
     }
-    for (Transaction transaction in widget._transactions) {
+    if (widget._transactions == null) return;
+    for (Transaction transaction in widget._transactions!) {
       _spendings[transaction.date.weekday - 1] += transaction.amount;
     }
   }
@@ -32,7 +33,7 @@ class _WeekPieChartState extends State<WeekPieChart> {
       margin: EdgeInsets.all(10),
       elevation: 7,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      color: Theme.of(context).accentColor,
+      color: Theme.of(context).colorScheme.secondary,
       child: Stack(
         children: <Widget>[
           Padding(
@@ -185,9 +186,9 @@ class Indicator extends StatelessWidget {
   final Color _textColor;
 
   const Indicator({
-    Key key,
-    @required Color color,
-    @required String text,
+    Key? key,
+    required Color color,
+    required String text,
     double size = 16,
     Color textColor = const Color(0xff505050),
   })  : _color = color,
@@ -220,3 +221,5 @@ class Indicator extends StatelessWidget {
     );
   }
 }
+
+
