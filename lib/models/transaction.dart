@@ -8,6 +8,7 @@ class Transaction extends Equatable {
   final DateTime createdOn;
   final String imagePath;
   final String category;
+  final bool isIncome;
 
   Transaction({
     required this.id,
@@ -17,6 +18,7 @@ class Transaction extends Equatable {
     required this.createdOn,
     required this.imagePath,
     this.category = 'Others',
+    this.isIncome = false,
   });
 
   @override
@@ -29,6 +31,7 @@ class Transaction extends Equatable {
       createdOn,
       imagePath,
       category,
+      isIncome,
     ];
   }
 
@@ -40,6 +43,7 @@ class Transaction extends Equatable {
     DateTime? createdOn,
     String? imagePath,
     String? category,
+    bool? isIncome,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -49,6 +53,7 @@ class Transaction extends Equatable {
       createdOn: createdOn ?? this.createdOn,
       imagePath: imagePath ?? this.imagePath,
       category: category ?? this.category,
+      isIncome: isIncome ?? this.isIncome,
     );
   }
 
@@ -61,6 +66,7 @@ class Transaction extends Equatable {
       'createdOn': createdOn.millisecondsSinceEpoch,
       'imagePath': imagePath,
       'category': category,
+      'isIncome': isIncome ? 1 : 0,
     };
   }
 
@@ -73,6 +79,7 @@ class Transaction extends Equatable {
       createdOn: DateTime.fromMillisecondsSinceEpoch(map['createdOn']),
       imagePath: map['imagePath'] ?? '',
       category: map['category'] ?? 'Others',
+      isIncome: map['isIncome'] == 1,
     );
   }
 

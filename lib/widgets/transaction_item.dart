@@ -18,35 +18,29 @@ class TransactionItem extends StatelessWidget {
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
-      case 'Food':
-        return Icons.restaurant;
-      case 'Transport':
-        return Icons.directions_car;
-      case 'Shopping':
-        return Icons.shopping_bag;
-      case 'Entertainment':
-        return Icons.movie;
-      case 'Health':
-        return Icons.medical_services;
-      default:
-        return Icons.category;
+      case 'Food': return Icons.restaurant;
+      case 'Transport': return Icons.directions_car;
+      case 'Shopping': return Icons.shopping_bag;
+      case 'Entertainment': return Icons.movie;
+      case 'Health': return Icons.medical_services;
+      case 'Salary': return Icons.payments;
+      case 'Gift': return Icons.card_giftcard;
+      case 'Interest': return Icons.trending_up;
+      default: return Icons.category;
     }
   }
 
   Color _getCategoryColor(BuildContext context, String category) {
     switch (category) {
-      case 'Food':
-        return Colors.orange;
-      case 'Transport':
-        return Colors.blue;
-      case 'Shopping':
-        return Colors.pink;
-      case 'Entertainment':
-        return Colors.purple;
-      case 'Health':
-        return Colors.red;
-      default:
-        return Theme.of(context).colorScheme.primary;
+      case 'Food': return Colors.orange;
+      case 'Transport': return Colors.blue;
+      case 'Shopping': return Colors.pink;
+      case 'Entertainment': return Colors.purple;
+      case 'Health': return Colors.red;
+      case 'Salary': return Colors.green;
+      case 'Gift': return Colors.orange;
+      case 'Interest': return Colors.blue;
+      default: return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -160,10 +154,10 @@ class TransactionItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '- ${_transaction.amount.parseCurrency()}',
+                      '${_transaction.isIncome ? '+' : '-'} ${_transaction.amount.parseCurrency()}',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.redAccent,
+                        color: _transaction.isIncome ? Colors.green : Colors.redAccent,
                       ),
                     ),
                     const SizedBox(height: 4),

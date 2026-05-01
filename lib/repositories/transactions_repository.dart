@@ -20,15 +20,15 @@ class TransactionsRepository {
     try {
       final dbAlreadyExists = await sqf.databaseExists(_dbPath);
       if (dbAlreadyExists) {
-        _db = await sqf.openDatabase(_dbPath, version: 1);
+        _db = await sqf.openDatabase(_dbPath, version: 2);
         return await getAllTransactions();
       } else {
         _db = await sqf.openDatabase(
           _dbPath,
-          version: 1,
+          version: 2,
           onCreate: (db, version) {
             return db.execute(
-                'CREATE TABLE $_tableName(id TEXT PRIMARY KEY, title TEXT, amount TEXT, date INTEGER, createdOn INTEGER, imagePath TEXT, category TEXT)');
+                'CREATE TABLE $_tableName(id TEXT PRIMARY KEY, title TEXT, amount TEXT, date INTEGER, createdOn INTEGER, imagePath TEXT, category TEXT, isIncome INTEGER DEFAULT 0)');
           },
         );
         return [];

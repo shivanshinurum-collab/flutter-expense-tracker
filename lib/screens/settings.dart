@@ -17,7 +17,7 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Settings'),
       ),
-      
+
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

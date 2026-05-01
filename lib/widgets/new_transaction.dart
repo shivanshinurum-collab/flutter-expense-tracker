@@ -44,15 +44,23 @@ class _NewTransactionState extends State<NewTransaction> {
   DateTime? _pickedDate = DateTime.now();
   File? _imageFile;
   String _selectedCategory = 'Food';
+  bool _isIncome = false;
   final ImagePicker _picker = ImagePicker();
   late Directory _appLibraryDirectory;
 
-  final List<Map<String, dynamic>> _categories = [
+  final List<Map<String, dynamic>> _expenseCategories = [
     {'name': 'Food', 'icon': Icons.restaurant, 'color': Colors.orange},
     {'name': 'Transport', 'icon': Icons.directions_car, 'color': Colors.blue},
     {'name': 'Shopping', 'icon': Icons.shopping_bag, 'color': Colors.pink},
     {'name': 'Entertainment', 'icon': Icons.movie, 'color': Colors.purple},
     {'name': 'Health', 'icon': Icons.medical_services, 'color': Colors.red},
+    {'name': 'Others', 'icon': Icons.category, 'color': Colors.blueGrey},
+  ];
+
+  final List<Map<String, dynamic>> _incomeCategories = [
+    {'name': 'Salary', 'icon': Icons.payments, 'color': Colors.green},
+    {'name': 'Gift', 'icon': Icons.card_giftcard, 'color': Colors.orange},
+    {'name': 'Interest', 'icon': Icons.trending_up, 'color': Colors.blue},
     {'name': 'Others', 'icon': Icons.category, 'color': Colors.blueGrey},
   ];
 
@@ -66,6 +74,7 @@ class _NewTransactionState extends State<NewTransaction> {
       _amountController.text = widget.transaction.amount.toString();
       _pickedDate = widget.transaction.date;
       _selectedCategory = widget.transaction.category;
+      _isIncome = widget.transaction.isIncome;
       _dateController.text = DateFormat.yMMMd().format(_pickedDate ?? DateTime.now());
       if (widget.transaction.imagePath.isNotEmpty) {
         _imageFile = File(widget.transaction.imagePath);
@@ -95,7 +104,7 @@ class _NewTransactionState extends State<NewTransaction> {
     final tBloc = context.read<TransactionsBloc>();
     final transaction = Transaction(
       id: widget.state == NewTransactionState.add
-          ? Uuid().v4()
+          ? const Uuid().v4()
           : widget.transaction.id,
       title: _titleController.text,
       amount: double.parse(_amountController.text),
@@ -103,6 +112,7 @@ class _NewTransactionState extends State<NewTransaction> {
       imagePath: writtenFile?.path ?? (widget.state == NewTransactionState.edit ? widget.transaction.imagePath : ''),
       createdOn: DateTime.now(),
       category: _selectedCategory,
+      isIncome: _isIncome,
     );
     if (widget.state == NewTransactionState.add) {
       tBloc.add(AddTransaction(transaction: transaction));
@@ -170,9 +180,31 @@ class _NewTransactionState extends State<NewTransaction> {
                   ),
                 ),
               ),
+              Center(
+                child: SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Expense'), icon: Icon(Icons.remove_circle_outline)),
+                    ButtonSegment(value: true, label: Text('Income'), icon: Icon(Icons.add_circle_outline)),
+                  ],
+                  selected: {_isIncome},
+                  onSelectionChanged: (Set<bool> newSelection) {
+                    setState(() {
+                      _isIncome = newSelection.first;
+                      _selectedCategory = _isIncome ? 'Salary' : 'Food';
+                    });
+                  },
+                  style: SegmentedButton.styleFrom(
+                    selectedBackgroundColor: _isIncome ? Colors.green : theme.colorScheme.primary,
+                    selectedForegroundColor: Colors.white,
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
+              
               Text(
-                widget.state == NewTransactionState.add ? 'New Expense' : 'Edit Expense',
+                widget.state == NewTransactionState.add 
+                  ? (_isIncome ? 'New Income' : 'New Expense') 
+                  : (_isIncome ? 'Edit Income' : 'Edit Expense'),
                 style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
@@ -184,10 +216,11 @@ class _NewTransactionState extends State<NewTransaction> {
                 height: 50,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
+                  itemCount: _isIncome ? _incomeCategories.length : _expenseCategories.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
-                    final cat = _categories[index];
+                    final categories = _isIncome ? _incomeCategories : _expenseCategories;
+                    final cat = categories[index];
                     final isSelected = _selectedCategory == cat['name'];
                     return GestureDetector(
                       onTap: () => setState(() => _selectedCategory = cat['name']),
@@ -216,8 +249,8 @@ class _NewTransactionState extends State<NewTransaction> {
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                  labelText: 'What did you spend on?',
-                  hintText: 'e.g. Dinner with friends',
+                  labelText: _isIncome ? 'Where did this income come from?' : 'What did you spend on?',
+                  hintText: _isIncome ? 'e.g. Freelance project' : 'e.g. Dinner with friends',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   prefixIcon: const Icon(Icons.title),
                 ),
@@ -323,7 +356,9 @@ class _NewTransactionState extends State<NewTransaction> {
                     elevation: 0,
                   ),
                   child: Text(
-                    widget.state == NewTransactionState.add ? 'Save Expense' : 'Update Expense',
+                    widget.state == NewTransactionState.add 
+                      ? (_isIncome ? 'Save Income' : 'Save Expense') 
+                      : (_isIncome ? 'Update Income' : 'Update Expense'),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),

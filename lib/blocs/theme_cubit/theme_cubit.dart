@@ -55,6 +55,16 @@ class ThemeCubit extends Cubit<ThemeState> {
     saveTheme(ThemeColor.green);
   }
 
+  void toTeal() {
+    emit(
+      state.copyWith(
+        color: ThemeColor.teal,
+        theme: tealTheme,
+      ),
+    );
+    saveTheme(ThemeColor.teal);
+  }
+
   void toIndigo() {
     emit(
       state.copyWith(
@@ -71,30 +81,36 @@ class ThemeCubit extends Cubit<ThemeState> {
         theme: darkTheme,
       ),
     );
-    // Dark mode handled separately in shared prefs if needed
   }
 
   void loadThemeIfPresent() {
     final savedTheme = _preferences.getString('theme');
     if (savedTheme != null) {
-      ThemeColor color = ThemeColor.values
-          .firstWhere((element) => element.toString() == savedTheme);
-      switch (color) {
-        case ThemeColor.blue:
-          toBlue();
-          break;
-        case ThemeColor.purple:
-          toPurple();
-          break;
-        case ThemeColor.green:
-          toGreen();
-          break;
-        case ThemeColor.red:
-          toRed();
-          break;
-        case ThemeColor.indigo:
-          toIndigo();
-          break;
+      try {
+        ThemeColor color = ThemeColor.values
+            .firstWhere((element) => element.toString() == savedTheme);
+        switch (color) {
+          case ThemeColor.blue:
+            toBlue();
+            break;
+          case ThemeColor.purple:
+            toPurple();
+            break;
+          case ThemeColor.green:
+            toGreen();
+            break;
+          case ThemeColor.red:
+            toRed();
+            break;
+          case ThemeColor.indigo:
+            toIndigo();
+            break;
+          case ThemeColor.teal:
+            toTeal();
+            break;
+        }
+      } catch (e) {
+        toTeal();
       }
     }
   }

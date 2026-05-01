@@ -73,7 +73,7 @@ class ExpenseTrackerApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Expense Tracker',
-          home: MyHomePage(),
+          home: const MainWrapper(),
           theme: state.theme,
         );
       },

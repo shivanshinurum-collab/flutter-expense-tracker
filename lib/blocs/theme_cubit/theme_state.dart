@@ -6,6 +6,7 @@ enum ThemeColor {
   blue,
   green,
   indigo,
+  teal,
 }
 
 ThemeData _createTheme(Color seedColor, {bool isDark = false}) {
@@ -40,6 +41,7 @@ final greenTheme = _createTheme(const Color(0xFF10B981));
 final redTheme = _createTheme(const Color(0xFFEF4444));
 final blueTheme = _createTheme(const Color(0xFF3B82F6));
 final indigoTheme = _createTheme(const Color(0xFF6366F1));
+final tealTheme = _createTheme(const Color(0xFF004D40));
 final darkTheme = _createTheme(const Color(0xFF6366F1), isDark: true);
 
 class ThemeState extends Equatable {
@@ -52,7 +54,7 @@ class ThemeState extends Equatable {
   });
 
   factory ThemeState.initial() {
-    return ThemeState(color: ThemeColor.indigo, theme: indigoTheme);
+    return ThemeState(color: ThemeColor.teal, theme: tealTheme);
   }
 
   @override

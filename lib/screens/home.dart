@@ -1,4 +1,5 @@
 import 'package:expense_app/blocs/app_blocs.dart';
+import 'package:intl/intl.dart';
 import 'package:expense_app/models/models.dart';
 import 'package:expense_app/repositories/repositories.dart';
 import 'package:expense_app/screens/screens.dart';
@@ -23,184 +24,189 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool _showBarChart = true;
 
-  double _calculateTotalSpending(List<Transaction> transactions) {
-    return transactions.fold(0.0, (sum, item) => sum + item.amount);
+  double _calculateTotalExpense(List<Transaction> transactions) {
+    return transactions.where((t) => !t.isIncome).fold(0.0, (sum, item) => sum + item.amount);
+  }
+
+  double _calculateTotalIncome(List<Transaction> transactions) {
+    return transactions.where((t) => t.isIncome).fold(0.0, (sum, item) => sum + item.amount);
+  }
+
+  Map<String, List<Transaction>> _groupTransactions(List<Transaction> transactions) {
+    Map<String, List<Transaction>> grouped = {};
+    for (var t in transactions) {
+      String dateKey = DateFormat('yyyy-MM-dd').format(t.date);
+      if (grouped[dateKey] == null) grouped[dateKey] = [];
+      grouped[dateKey]!.add(t);
+    }
+    return grouped;
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: BlocConsumer<TransactionsBloc, TransactionsState>(
-        listener: (context, state) {
-          if (state.status == TStatus.error) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(state.error),
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ));
-          }
-        },
+      backgroundColor: theme.colorScheme.surface,
+      body: BlocBuilder<TransactionsBloc, TransactionsState>(
         builder: (context, state) {
-          if (state.status == TStatus.initial ||
-              state.status == TStatus.loading) {
+          if (state.status == TStatus.initial || state.status == TStatus.loading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final totalSpending = _calculateTotalSpending(state.transactionsList);
+          final totalExpense = _calculateTotalExpense(state.transactionsList);
+          final totalIncome = _calculateTotalIncome(state.transactionsList);
+          final balance = totalIncome - totalExpense;
+          final groupedTransactions = _groupTransactions(state.transactionsList.reversed.toList());
 
           return CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: 120.0,
+                backgroundColor: theme.colorScheme.primary,
+                expandedHeight: 220.0,
                 floating: false,
                 pinned: true,
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text(
-                    'My Expenses',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  centerTitle: false,
-                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-                ),
-                actions: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider<SearchCubit>(
-                            create: (context) => SearchCubit(
-                              transactionsRepository:
-                                  context.read<TransactionsRepository>(),
-                            )..loadAll(),
-                            child: SearchPage(),
+                  background: Container(
+                    padding: const EdgeInsets.only(top: 60, left: 20, right: 20),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildHeaderStat('Income', totalIncome, Colors.greenAccent),
+                            _buildHeaderStat('Expense', totalExpense, Colors.redAccent),
+                            _buildHeaderStat('Total', balance, Colors.white),
+                          ],
+                        ),
+                        const SizedBox(height: 30),
+                        // Search Bar
+                        Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(15),
                           ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.search),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SettingsPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.settings),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildBalanceCard(context, totalSpending),
-                      const SizedBox(height: 16),
-                      _buildAdvisorBanner(context, state.transactionsList),
-                      const SizedBox(height: 24),
-                      
-                      // Chart Section Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Analytics',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          child: TextField(
+                            onChanged: (val) {
+                              // I'll integrate real search logic later or just use navigation
+                            },
+                            readOnly: true,
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BlocProvider<SearchCubit>(
+                              create: (context) => SearchCubit(transactionsRepository: context.read<TransactionsRepository>())..loadAll(),
+                              child: SearchPage(),
+                            ))),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: 'Search transactions...',
+                              hintStyle: TextStyle(color: Colors.white60),
+                              prefixIcon: Icon(Icons.search, color: Colors.white60),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(vertical: 15),
                             ),
                           ),
-                          TextButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _showBarChart = !_showBarChart;
-                              });
-                            },
-                            icon: Icon(_showBarChart ? Icons.pie_chart : Icons.bar_chart),
-                            label: Text(_showBarChart ? 'Pie View' : 'Bar View'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // Chart Card
-                      Container(
-                        height: 220,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          gradient: LinearGradient(
-                            colors: [
-                              Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                              Theme.of(context).colorScheme.secondary.withOpacity(0.05),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
                         ),
-                        child: state.transactionsList.isEmpty
-                          ? const Center(child: Text('Add transactions to see analytics'))
-                          : _showBarChart
-                              ? WeekBarChart(transactions: state.transactionsList)
-                              : WeekPieChart(transactions: state.transactionsList),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Recent Transactions Header
-                      Text(
-                        'Recent Transactions',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
+                      ],
+                    ),
+                  ),
+                  title: Text(
+                    DateFormat('MMMM yyyy').format(DateTime.now()),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  centerTitle: true,
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Transform.translate(
+                  offset: const Offset(0, -20),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: _buildBalanceCard(context, totalExpense), // This still shows budget progress
                   ),
                 ),
               ),
-              state.transactionsList.isEmpty
-                  ? SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _buildEmptyState(context),
-                    )
-                  : SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final reversedList = state.transactionsList.reversed.toList();
-                            return TransactionItem(
-                              transaction: reversedList[index],
-                              deleteTransaction: (String id) {
-                                context.read<TransactionsBloc>().add(
-                                  RemoveTransaction(transactionID: id),
-                                );
-                              },
-                            );
-                          },
-                          childCount: state.transactionsList.length,
+              if (state.transactionsList.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _buildEmptyState(context),
+                )
+              else
+                ...groupedTransactions.entries.map((entry) {
+                  final date = DateTime.parse(entry.key);
+                  final isToday = DateFormat('yyyy-MM-dd').format(DateTime.now()) == entry.key;
+                  final dayExpense = entry.value.where((t) => !t.isIncome).fold(0.0, (sum, item) => sum + item.amount);
+                  final dayIncome = entry.value.where((t) => t.isIncome).fold(0.0, (sum, item) => sum + item.amount);
+
+                  return SliverMainAxisGroup(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                isToday ? 'Today' : DateFormat('EEEE, MMM dd').format(date),
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  if (dayIncome > 0)
+                                    Text(
+                                      '+₹ ${dayIncome.toStringAsFixed(0)} ',
+                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
+                                    ),
+                                  Text(
+                                    '₹ ${dayExpense.toStringAsFixed(0)}',
+                                    style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => TransactionItem(
+                              transaction: entry.value[index],
+                              deleteTransaction: (id) => context.read<TransactionsBloc>().add(RemoveTransaction(transactionID: id)),
+                            ),
+                            childCount: entry.value.length,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _startAddNewTransaction(context),
-        label: const Text('Add Expense'),
-        icon: const Icon(Icons.add),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: const Icon(Icons.add),
+        backgroundColor: theme.colorScheme.primary,
         foregroundColor: Colors.white,
       ),
+    );
+  }
+
+  Widget _buildHeaderStat(String label, double value, Color color) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(
+          '₹ ${value.abs().toStringAsFixed(0)}',
+          style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ],
     );
   }
 
