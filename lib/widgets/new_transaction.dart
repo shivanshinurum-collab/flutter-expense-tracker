@@ -1,15 +1,19 @@
 import 'dart:io';
 
+import 'package:expense_app/modules/accounts/accounts_controller.dart';
+import 'package:expense_app/modules/categories/categories_controller.dart';
+import 'package:expense_app/modules/home/home_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:expense_app/blocs/app_blocs.dart';
-import 'package:expense_app/extensions/extensions.dart';
 import 'package:expense_app/models/models.dart';
+
+import '../modules/settings/settings_controller.dart';
 
 enum NewTransactionState {
   edit,
@@ -23,7 +27,7 @@ class NewTransaction extends StatefulWidget {
   NewTransaction.add({
     Key? key,
   })  : this.state = NewTransactionState.add,
-        this.transaction = Transaction(id: "", title: "", amount: 0.0, date: DateTime.now(), createdOn: DateTime.now(), imagePath: ""),
+        this.transaction = Transaction(id: "", title: "", amount: 0.0, date: DateTime.now(), createdOn: DateTime.now(), imagePath: "", category: "Others", account: "Cash"),
         super(key: key);
 
   NewTransaction.edit({
@@ -44,25 +48,10 @@ class _NewTransactionState extends State<NewTransaction> {
   DateTime? _pickedDate = DateTime.now();
   File? _imageFile;
   String _selectedCategory = 'Food';
+  String _selectedAccount = 'Cash';
   bool _isIncome = false;
   final ImagePicker _picker = ImagePicker();
   late Directory _appLibraryDirectory;
-
-  final List<Map<String, dynamic>> _expenseCategories = [
-    {'name': 'Food', 'icon': Icons.restaurant, 'color': Colors.orange},
-    {'name': 'Transport', 'icon': Icons.directions_car, 'color': Colors.blue},
-    {'name': 'Shopping', 'icon': Icons.shopping_bag, 'color': Colors.pink},
-    {'name': 'Entertainment', 'icon': Icons.movie, 'color': Colors.purple},
-    {'name': 'Health', 'icon': Icons.medical_services, 'color': Colors.red},
-    {'name': 'Others', 'icon': Icons.category, 'color': Colors.blueGrey},
-  ];
-
-  final List<Map<String, dynamic>> _incomeCategories = [
-    {'name': 'Salary', 'icon': Icons.payments, 'color': Colors.green},
-    {'name': 'Gift', 'icon': Icons.card_giftcard, 'color': Colors.orange},
-    {'name': 'Interest', 'icon': Icons.trending_up, 'color': Colors.blue},
-    {'name': 'Others', 'icon': Icons.category, 'color': Colors.blueGrey},
-  ];
 
   @override
   void initState() {
@@ -74,11 +63,14 @@ class _NewTransactionState extends State<NewTransaction> {
       _amountController.text = widget.transaction.amount.toString();
       _pickedDate = widget.transaction.date;
       _selectedCategory = widget.transaction.category;
+      _selectedAccount = widget.transaction.account;
       _isIncome = widget.transaction.isIncome;
-      _dateController.text = DateFormat.yMMMd().format(_pickedDate ?? DateTime.now());
+      _dateController.text = DateFormat('MMM d, yyyy - hh:mm a').format(_pickedDate ?? DateTime.now());
       if (widget.transaction.imagePath.isNotEmpty) {
         _imageFile = File(widget.transaction.imagePath);
       }
+    } else {
+      _selectedCategory = _isIncome ? 'Salary' : 'Food';
     }
   }
 
@@ -97,11 +89,12 @@ class _NewTransactionState extends State<NewTransaction> {
       return;
     }
     File? writtenFile;
-    if (_imageFile != null && _imageFile!.existsSync()) {
-      final imageFilePath = '${_appLibraryDirectory.path}/${Uuid().v4()}.png';
+    if (!kIsWeb && _imageFile != null && _imageFile!.existsSync()) {
+      final imageFilePath = '${_appLibraryDirectory.path}/${const Uuid().v4()}.png';
       writtenFile = await _imageFile!.copy(imageFilePath);
     }
-    final tBloc = context.read<TransactionsBloc>();
+    
+    final transController = Get.find<TransactionsController>();
     final transaction = Transaction(
       id: widget.state == NewTransactionState.add
           ? const Uuid().v4()
@@ -109,21 +102,33 @@ class _NewTransactionState extends State<NewTransaction> {
       title: _titleController.text,
       amount: double.parse(_amountController.text),
       date: _pickedDate ?? DateTime.now(),
-      imagePath: writtenFile?.path ?? (widget.state == NewTransactionState.edit ? widget.transaction.imagePath : ''),
+      imagePath: writtenFile?.path ?? (widget.state == NewTransactionState.edit ? widget.transaction.id != "" ? widget.transaction.imagePath : "" : ''),
       createdOn: DateTime.now(),
       category: _selectedCategory,
+      account: _selectedAccount,
       isIncome: _isIncome,
     );
-    if (widget.state == NewTransactionState.add) {
-      tBloc.add(AddTransaction(transaction: transaction));
-    } else {
-      tBloc.add(UpdateTransaction(transaction: transaction));
+    if (_selectedCategory == 'Category' || _selectedCategory.isEmpty) {
+      Get.snackbar('Error', 'Please select a category', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      return;
     }
-    Navigator.of(context).pop();
+    if (_selectedAccount == 'Account' || _selectedAccount.isEmpty) {
+      Get.snackbar('Error', 'Please select an account', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      return;
+    }
+
+    if (widget.state == NewTransactionState.add) {
+      transController.addTransaction(transaction);
+      // Update account balance
+      Get.find<AccountsController>().updateAccountBalance(_selectedAccount, double.parse(_amountController.text), _isIncome);
+    } else {
+      transController.updateTransaction(transaction);
+    }
+    Get.back();
   }
 
-  void _startDatePicker() {
-    showDatePicker(
+  void _startDateTimePicker() async {
+    final DateTime? date = await showDatePicker(
       context: context,
       initialDate: _pickedDate ?? DateTime.now(),
       firstDate: DateTime(2020),
@@ -132,25 +137,34 @@ class _NewTransactionState extends State<NewTransaction> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: Theme.of(context).colorScheme.primary,
-                ),
+              onSurface: Colors.white,
+            ),
           ),
           child: child!,
         );
       },
-    ).then((value) {
-      if (value != null) {
+    );
+
+    if (date != null) {
+      final TimeOfDay? time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_pickedDate ?? DateTime.now()),
+      );
+
+      if (time != null) {
         setState(() {
-          _pickedDate = value;
-          _dateController.text = DateFormat.yMMMd().format(value);
+          _pickedDate = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+          _dateController.text = DateFormat('MMM d, yyyy - hh:mm a').format(_pickedDate!);
         });
       }
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final categoriesController = Get.find<CategoriesController>();
+    final accountsController = Get.find<AccountsController>();
     
     return Container(
       decoration: BoxDecoration(
@@ -171,16 +185,6 @@ class _NewTransactionState extends State<NewTransaction> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Center(
                 child: SegmentedButton<bool>(
                   segments: const [
                     ButtonSegment(value: false, label: Text('Expense'), icon: Icon(Icons.remove_circle_outline)),
@@ -193,64 +197,87 @@ class _NewTransactionState extends State<NewTransaction> {
                       _selectedCategory = _isIncome ? 'Salary' : 'Food';
                     });
                   },
-                  style: SegmentedButton.styleFrom(
-                    selectedBackgroundColor: _isIncome ? Colors.green : theme.colorScheme.primary,
-                    selectedForegroundColor: Colors.white,
-                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              
-              Text(
-                widget.state == NewTransactionState.add 
-                  ? (_isIncome ? 'New Income' : 'New Expense') 
-                  : (_isIncome ? 'Edit Income' : 'Edit Expense'),
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               
               // Category Selection
               Text('Category', style: theme.textTheme.titleSmall),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 50,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _isIncome ? _incomeCategories.length : _expenseCategories.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final categories = _isIncome ? _incomeCategories : _expenseCategories;
-                    final cat = categories[index];
-                    final isSelected = _selectedCategory == cat['name'];
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedCategory = cat['name']),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: isSelected ? cat['color'] : cat['color'].withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(16),
+              Obx(() {
+                final categories = categoriesController.categories;
+                final filtered = categories.where((c) => c.isIncome == _isIncome).toList();
+                return SizedBox(
+                  height: 50,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final cat = filtered[index];
+                      final isSelected = _selectedCategory == cat.name;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedCategory = cat.name),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(cat.name, style: TextStyle(
+                              color: isSelected ? Colors.black : theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold
+                            )),
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(cat['icon'], size: 18, color: isSelected ? Colors.white : cat['color']),
-                            if (isSelected) ...[
-                              const SizedBox(width: 8),
-                              Text(cat['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            ],
-                          ],
+                      );
+                    },
+                  ),
+                );
+              }),
+              const SizedBox(height: 24),
+
+              // Account Selection
+              Text('Account', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 12),
+              Obx(() {
+                final accounts = accountsController.accounts;
+                return SizedBox(
+                  height: 50,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: accounts.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final acc = accounts[index];
+                      final isSelected = _selectedAccount == acc.name;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedAccount = acc.name),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(acc.name, style: TextStyle(
+                              color: isSelected ? Colors.black : theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold
+                            )),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+                      );
+                    },
+                  ),
+                );
+              }),
               const SizedBox(height: 24),
               
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                  labelText: _isIncome ? 'Where did this income come from?' : 'What did you spend on?',
-                  hintText: _isIncome ? 'e.g. Freelance project' : 'e.g. Dinner with friends',
+                  labelText: 'Title',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   prefixIcon: const Icon(Icons.title),
                 ),
@@ -267,7 +294,7 @@ class _NewTransactionState extends State<NewTransaction> {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'Amount',
-                        prefixText: '₹ ',
+                        prefixText: '${Get.find<SettingsController>().currencySymbol.value} ',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       validator: (val) {
@@ -281,7 +308,7 @@ class _NewTransactionState extends State<NewTransaction> {
                   Expanded(
                     flex: 1,
                     child: InkWell(
-                      onTap: _startDatePicker,
+                      onTap: _startDateTimePicker,
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         height: 56,
@@ -289,11 +316,23 @@ class _NewTransactionState extends State<NewTransaction> {
                           border: Border.all(color: theme.colorScheme.outline),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(Icons.calendar_today),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.calendar_today, size: 20, color: theme.colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Icon(Icons.access_time, size: 20, color: theme.colorScheme.primary),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Date & Time: ${_dateController.text.isEmpty ? 'Not selected' : _dateController.text}',
+                style: TextStyle(color: theme.colorScheme.primary.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               
@@ -351,16 +390,10 @@ class _NewTransactionState extends State<NewTransaction> {
                   onPressed: _onSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
                   ),
-                  child: Text(
-                    widget.state == NewTransactionState.add 
-                      ? (_isIncome ? 'Save Income' : 'Save Expense') 
-                      : (_isIncome ? 'Update Income' : 'Update Expense'),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: const Text('SAVE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

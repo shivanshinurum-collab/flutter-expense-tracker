@@ -1,12 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:expense_app/blocs/app_blocs.dart';
+import 'package:expense_app/modules/home/home_controller.dart';
+import 'package:expense_app/modules/theme/theme_controller.dart';
+import 'package:expense_app/modules/budgets/budget_controller.dart';
+import 'package:expense_app/modules/accounts/accounts_controller.dart';
+import 'package:expense_app/modules/categories/categories_controller.dart';
+import 'package:expense_app/modules/home/date_controller.dart';
+import 'package:expense_app/modules/recurring/recurring_controller.dart';
+import 'package:expense_app/modules/reminders/reminders_controller.dart';
+import 'package:expense_app/modules/settings/settings_controller.dart';
 import 'package:expense_app/repositories/repositories.dart';
-import 'package:expense_app/screens/screens.dart';
+
+import 'package:expense_app/modules/other/views/views.dart';
 
 void main() async {
   // Google Fonts License
@@ -18,67 +27,37 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-  // * Getting Ready for Release
-  // Bloc.observer = AppBlocObserver();
+
   final sharedPreferences = await SharedPreferences.getInstance();
-  runApp(new MyApp(sharedPreferences: sharedPreferences));
+  
+  // Dependency Injection using GetX
+  Get.put(SettingsController());
+
+  Get.put(ThemeController(preferences: sharedPreferences));
+  Get.put(TransactionsController());
+  Get.put(BudgetController());
+  Get.put(AccountsController());
+  Get.put(CategoriesController());
+  Get.put(DateController());
+  Get.put(RecurringController());
+  Get.put(RemindersController());
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final SharedPreferences sharedPreferences;
-  const MyApp({
-    required this.sharedPreferences,
-  });
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
-      providers: [
-        RepositoryProvider(create: (context) => TransactionsRepository()),
-        RepositoryProvider(create: (context) => UserPreferencesRepository(preferences: sharedPreferences)),
-      ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider<TransactionsBloc>(
-            create: (context) => TransactionsBloc(
-              transactionsRepository: context.read<TransactionsRepository>(),
-            )..add(GetTransactions()),
-          ),
-          BlocProvider(
-            create: (context) => ThemeCubit(
-              preferences: sharedPreferences,
-            ),
-          ),
-          BlocProvider(
-            create: (context) => BudgetCubit(
-              repository: context.read<UserPreferencesRepository>(),
-            ),
-          ),
-        ],
-        child: const ExpenseTrackerApp(),
-      ),
-    );
-  }
-}
+    final themeController = Get.find<ThemeController>();
+    final settingsController = Get.find<SettingsController>();
 
-class ExpenseTrackerApp extends StatelessWidget {
-  const ExpenseTrackerApp({
-    Key? key,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeState>(
-      builder: (context, state) {
-        return MaterialApp(
+    return Obx(() => GetMaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Expense Tracker',
-          home: const MainWrapper(),
-          theme: state.theme,
-        );
-      },
-    );
+          home: settingsController.shouldShowOnboarding() ? const OnboardingScreen() : const MainWrapper(),
+          theme: themeController.theme.value,
+        ));
   }
 }
-
-

@@ -14,7 +14,6 @@ class WeekBarChart extends StatefulWidget {
 }
 
 class WeekBarChartState extends State<WeekBarChart> {
-  final Color _barBackgroundColor = Colors.white;
   int _touchedIndex = -1;
   double _total = 0.0;
   List<double> _spendings = List.generate(7, (index) => 0);
@@ -40,57 +39,13 @@ class WeekBarChartState extends State<WeekBarChart> {
   Widget build(BuildContext context) {
     _calculateTotal();
     _total = _spendings.reduce(max);
-    return Card(
-      margin: EdgeInsets.all(10),
-      elevation: 7,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      color: Theme.of(context).colorScheme.secondary,
-      child: Stack(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisAlignment: MainAxisAlignment.start,
-              mainAxisSize: MainAxisSize.max,
-              children: <Widget>[
-                Text(
-                  'Weekly Expenses',
-                  style: TextStyle(
-                    color: Theme.of(context).primaryColorDark,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(
-                  height: 4,
-                ),
-                Text(
-                  'Bar Chart',
-                  style: TextStyle(
-                    color: Theme.of(context).primaryColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(
-                  height: 38,
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: BarChart(
-                      _mainBarData(),
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  height: 12,
-                ),
-              ],
-            ),
-          ),
-        ],
+    if (_total == 0) _total = 100; // avoid div by zero
+
+    return Container(
+      padding: const EdgeInsets.only(top: 24, bottom: 8),
+      child: AspectRatio(
+        aspectRatio: 1.7,
+        child: BarChart(_mainBarData()),
       ),
     );
   }
@@ -105,15 +60,14 @@ class WeekBarChartState extends State<WeekBarChart> {
       x: x,
       barRods: [
         BarChartRodData(
-          toY: isTouched ? y + 1 : y,
-          color: isTouched
-              ? Theme.of(context).primaryColorDark
-              : Theme.of(context).primaryColor,
+          toY: y,
+          color: isTouched ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withOpacity(0.7),
           width: width,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
-            toY: _total, // Length of all Bars
-            color: _barBackgroundColor,
+            toY: _total,
+            color: Colors.white.withOpacity(0.05),
           ),
         ),
       ],
@@ -153,35 +107,21 @@ class WeekBarChartState extends State<WeekBarChart> {
     return BarChartData(
       barTouchData: BarTouchData(
         touchTooltipData: BarTouchTooltipData(
-            tooltipBgColor: Colors.blueGrey,
+            tooltipBgColor: const Color(0xFF4A4642),
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               String weekDay = "";
               switch (group.x.toInt()) {
-                case 0:
-                  weekDay = 'Monday';
-                  break;
-                case 1:
-                  weekDay = 'Tuesday';
-                  break;
-                case 2:
-                  weekDay = 'Wednesday';
-                  break;
-                case 3:
-                  weekDay = 'Thursday';
-                  break;
-                case 4:
-                  weekDay = 'Friday';
-                  break;
-                case 5:
-                  weekDay = 'Saturday';
-                  break;
-                case 6:
-                  weekDay = 'Sunday';
-                  break;
+                case 0: weekDay = 'Mon'; break;
+                case 1: weekDay = 'Tue'; break;
+                case 2: weekDay = 'Wed'; break;
+                case 3: weekDay = 'Thu'; break;
+                case 4: weekDay = 'Fri'; break;
+                case 5: weekDay = 'Sat'; break;
+                case 6: weekDay = 'Sun'; break;
               }
               return BarTooltipItem(
-                  weekDay + '\n' + '₹ ' + (rod.toY - 1).toString(),
-                  TextStyle(color: Colors.white, fontFamily: 'Poppins'));
+                  '$weekDay\n₹${rod.toY.toStringAsFixed(0)}',
+                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold));
             }),
         touchCallback: (touchEvent, barTouchResponse) {
           setState(() {
@@ -251,9 +191,9 @@ class WeekBarChartState extends State<WeekBarChart> {
                 child: Text(
                   text,
                   style: TextStyle(
-                    color: Theme.of(context).primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
               );

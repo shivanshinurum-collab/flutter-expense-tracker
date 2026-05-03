@@ -1,17 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-
-final formatter = NumberFormat.compactSimpleCurrency(
-    locale: kIsWeb ? 'en_IN' : null, decimalDigits: 2);
+import 'package:expense_app/modules/settings/settings_controller.dart';
 
 extension CurrencyParsing on double {
   String parseCurrency() {
-    return formatter.format(this);
+    final symbol = Get.find<SettingsController>().currencySymbol.value;
+    final formatter = NumberFormat('#,##0.00');
+    return '$symbol${formatter.format(this)}';
   }
 }
-
-String getCurrencySymbol() {
-  return formatter.currencySymbol;
-}
-
-

@@ -1,11 +1,12 @@
 import 'package:expense_app/models/models.dart';
-import 'package:expense_app/screens/screens.dart';
+import 'package:expense_app/modules/other/views/views.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:expense_app/extensions/currency_extension.dart';
 
 class TransactionItem extends StatelessWidget {
-  TransactionItem({
+  const TransactionItem({
     Key? key,
     required Transaction transaction,
     required Function deleteTransaction,
@@ -77,18 +78,17 @@ class TransactionItem extends StatelessWidget {
         direction: DismissDirection.endToStart,
         onDismissed: (direction) => _deleteTransaction(_transaction.id),
         confirmDismiss: (direction) async {
-          return await showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
+          return await Get.dialog(
+            AlertDialog(
               title: const Text("Delete Transaction?"),
               content: const Text("This action cannot be undone."),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => Get.back(result: false),
                   child: const Text("CANCEL"),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
+                  onPressed: () => Get.back(result: true),
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
                   child: const Text("DELETE"),
                 ),
@@ -98,12 +98,7 @@ class TransactionItem extends StatelessWidget {
         },
         child: InkWell(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DetailsPage(transaction: _transaction),
-              ),
-            );
+            Get.to(() => DetailsPage(transaction: _transaction));
           },
           borderRadius: BorderRadius.circular(20),
           child: Padding(
@@ -153,13 +148,13 @@ class TransactionItem extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
+                    Obx(() => Text(
                       '${_transaction.isIncome ? '+' : '-'} ${_transaction.amount.parseCurrency()}',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: _transaction.isIncome ? Colors.green : Colors.redAccent,
                       ),
-                    ),
+                    )),
                     const SizedBox(height: 4),
                     Text(
                       DateFormat.yMMMd().format(_transaction.date),
@@ -178,5 +173,3 @@ class TransactionItem extends StatelessWidget {
     );
   }
 }
-
-

@@ -29,152 +29,75 @@ class _WeekPieChartState extends State<WeekPieChart> {
   @override
   Widget build(BuildContext context) {
     _generateWeeklyReport();
-    return Card(
-      margin: EdgeInsets.all(10),
-      elevation: 7,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      color: Theme.of(context).colorScheme.secondary,
-      child: Stack(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisAlignment: MainAxisAlignment.start,
-              mainAxisSize: MainAxisSize.max,
-              children: <Widget>[
-                Text(
-                  'Weekly Expenses',
-                  style: TextStyle(
-                    color: Theme.of(context).primaryColorDark,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(
-                  height: 4,
-                ),
-                Text(
-                  'Pie Chart',
-                  style: TextStyle(
-                    color: Theme.of(context).primaryColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Expanded(
-                  child: PieChart(
-                    PieChartData(
-                      sectionsSpace: 3.0,
-                      centerSpaceRadius: 00.0,
-                      startDegreeOffset: 130.0,
-                      borderData:
-                          FlBorderData(border: Border.all(), show: false),
-                      sections: [
-                        PieChartSectionData(
-                          showTitle: false,
-                          color: Colors.redAccent,
-                          value: _spendings[0],
-                          radius: 75.0,
-                        ),
-                        PieChartSectionData(
-                          showTitle: false,
-                          color: Colors.deepPurple,
-                          value: _spendings[1],
-                          radius: 75.0,
-                        ),
-                        PieChartSectionData(
-                          showTitle: false,
-                          color: Colors.grey,
-                          value: _spendings[2],
-                          radius: 75.0,
-                        ),
-                        PieChartSectionData(
-                          showTitle: false,
-                          color: Colors.green,
-                          value: _spendings[3],
-                          radius: 75.0,
-                        ),
-                        PieChartSectionData(
-                          showTitle: false,
-                          color: Colors.brown,
-                          value: _spendings[4],
-                          radius: 75.0,
-                        ),
-                        PieChartSectionData(
-                          showTitle: false,
-                          color: Colors.blue,
-                          value: _spendings[5],
-                          radius: 75.0,
-                        ),
-                        PieChartSectionData(
-                          showTitle: false,
-                          color: Colors.black,
-                          value: _spendings[6],
-                          radius: 75.0,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.0),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  mainAxisSize: MainAxisSize.max,
-                  children: const <Widget>[
-                    Indicator(
-                      color: Colors.redAccent,
-                      text: 'Mon',
-                    ),
-                    SizedBox(
-                      height: 4,
-                    ),
-                    Indicator(
-                      color: Colors.deepPurple,
-                      text: 'Tue',
-                    ),
-                    SizedBox(
-                      height: 4,
-                    ),
-                    Indicator(
-                      color: Colors.grey,
-                      text: 'Wed',
-                    ),
-                    SizedBox(
-                      height: 4,
-                    ),
-                    Indicator(
-                      color: Colors.green,
-                      text: 'Thu',
-                    ),
-                    SizedBox(
-                      height: 4,
-                    ),
-                    Indicator(
-                      color: Colors.brown,
-                      text: 'Fri',
-                    ),
-                    SizedBox(
-                      height: 4,
-                    ),
-                    Indicator(
-                      color: Colors.blue,
-                      text: 'Sat',
-                    ),
-                    SizedBox(
-                      height: 4,
-                    ),
-                    Indicator(
-                      color: Colors.black,
-                      text: 'Sun',
-                    ),
-                  ],
-                ),
-              ],
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 200,
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 4,
+                centerSpaceRadius: 40,
+                sections: [
+                  _buildPieSection(0, Colors.redAccent, 'Mon'),
+                  _buildPieSection(1, Colors.deepPurpleAccent, 'Tue'),
+                  _buildPieSection(2, Colors.blueAccent, 'Wed'),
+                  _buildPieSection(3, Colors.greenAccent, 'Thu'),
+                  _buildPieSection(4, Colors.orangeAccent, 'Fri'),
+                  _buildPieSection(5, Colors.cyanAccent, 'Sat'),
+                  _buildPieSection(6, Colors.pinkAccent, 'Sun'),
+                ],
+              ),
             ),
+          ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            alignment: WrapAlignment.center,
+            children: [
+              _buildIndicator(Colors.redAccent, 'Mon'),
+              _buildIndicator(Colors.deepPurpleAccent, 'Tue'),
+              _buildIndicator(Colors.blueAccent, 'Wed'),
+              _buildIndicator(Colors.greenAccent, 'Thu'),
+              _buildIndicator(Colors.orangeAccent, 'Fri'),
+              _buildIndicator(Colors.cyanAccent, 'Sat'),
+              _buildIndicator(Colors.pinkAccent, 'Sun'),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  PieChartSectionData _buildPieSection(int index, Color color, String title) {
+    final value = _spendings[index];
+    final isSelected = value > 0;
+    return PieChartSectionData(
+      color: color,
+      value: isSelected ? value : 1, // Show tiny slice if zero to keep layout
+      title: isSelected ? '₹${value.toStringAsFixed(0)}' : '',
+      radius: 60,
+      showTitle: isSelected && value > (_spendings.reduce((a, b) => a + b) / 10),
+      titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+    );
+  }
+
+  Widget _buildIndicator(Color color, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
+        const SizedBox(width: 6),
+        Text(text, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }
